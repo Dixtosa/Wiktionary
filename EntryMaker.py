@@ -4,9 +4,10 @@ import os.path
 import mechanize
 import cookielib
 
-# Date created : Don't remember xD
+# Date created : Do not remember xD
 # Purpose      : Provides functions to non-manually create an article on wiktionary
-# Dependencies : Mechanize (browser simulator)
+# Dependencies : Mechanize (browser simulator) 
+#                - use the following command to install it: $ sudo pip install mechanize
 
 br = mechanize.Browser()
 cj = cookielib.LWPCookieJar(); br.set_cookiejar(cj)
@@ -17,27 +18,27 @@ br.open('http://en.wiktionary.org/w/index.php?title=Special:UserLogin')
 br.select_form(nr=0)
 
 
-loggedIn=False
+loggedIn = False
 username = "Dixtosa"
 password = ":P"
 
 def login():
+	global loggedIn
 	br.form['wpName'] = username
 	br.form['wpPassword'] = password
 	br.form['wpRemember'] = ['1',]
-	sub=br.submit()
-	result=sub.read ()
-	
+	sub = br.submit()
+	result = sub.read()
+
 	if result.find ("Login successful")>=0:
 		loggedIn = True
 
 	print "* Login is %ssuccessful" % ("" if loggedIn else "un")
 
-login()
 
 def Exists(word):
 	try:
-		br.open("http://en.wiktionary.org/wiki/"+urllib.quote_plus(word.encode ("utf-8")))
+		br.open("http://en.wiktionary.org/wiki/" + urllib.quote_plus(word.encode ("utf-8")))
 		return True
 	except urllib2.HTTPError:
 		return False
@@ -49,7 +50,7 @@ def Make_Entry_on_Wiktionary(Word, Entry_Content):
 		print "The word already exists.\n Quitting."
 		return
 	
-	URL="http://en.wiktionary.org/w/index.php?title=%s&action=edit"
+	URL = "http://en.wiktionary.org/w/index.php?title=%s&action=edit"
 	my_string_list = {'wpAntispam': '',
 		"wpTextbox1" : Entry_Content}
 	

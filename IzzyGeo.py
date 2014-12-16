@@ -1,12 +1,11 @@
 #!/usr/bin/python
-
 # --coding: utf-8
 
 
-## Description:   This script eases creation of Georgian terms on http://en.wiktionary.org
-## Author:        Dixtosa
-## Language:      Python 2
-## Date started:  at least 2013
+# Description:   This script eases creation of Georgian terms on http://en.wiktionary.org
+# Author:        Dixtosa
+# Language:      Python 2
+# Date created:  18 Feb 2012 (initial version)
 
 import re, sys
 
@@ -196,7 +195,7 @@ def Main():
 	partOfSpeech = getPartOfSpeech()
 	headwordTemplate = getHeadwordTemplate(partOfSpeech)
 	
-	word = raw_input("WORD: ") #Input in Latin script, but use unnoficial romanization; see http://en.wikipedia.org/wiki/Romanization_of_Georgian
+	word = raw_input("Input word: ") #Input in Latin script, but use unnoficial romanization; see http://en.wikipedia.org/wiki/Romanization_of_Georgian
 	
 	if partOfSpeech in ["Noun", "Proper noun"]:
 		plural = "|" + GetPlural(word)
@@ -204,7 +203,6 @@ def Main():
 	
 	definition = getDefinition(partOfSpeech)
 	
-	print definition
 	
 	content = Generate_Content(
 	        partOfSpeech,
