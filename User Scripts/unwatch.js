@@ -7,6 +7,7 @@
 
 function unwatch(Title)
 {
+	Title = decodeURIComponent(Title);
 	$.ajax({
 		url: mw.util.wikiScript( 'api' ),
 		type: 'POST',
@@ -24,7 +25,7 @@ function unwatch(Title)
 			console.log( 'Page edited!' );
  
 			//remove from watchlist
-			$(".mw-changeslist li .mw-title:contains('" + Title + "')").parent().hide("slow");
+			$(".mw-changeslist li .mw-title:contains('" + Title.replace("'", "\\'") + "')").parent().hide("slow");
 		} else {
 			alert( 'The edit query returned an error.' );
 		}
@@ -38,7 +39,8 @@ function addUnwatch()
 {
 	var arr = $ ("a:contains('diff')"); //probably a bit sloppy
 	arr.after(function(i) {
-		return " | <a href='javascript: unwatch(\"" + arr[i].title + "\")'>unwatch</a>";
+		//I'm vegetarian
+		return " | <a href='javascript: unwatch(\"" + arr[i].title.replace("'", "%27") + "\")'>unwatch</a>";
 	});
 }
 

@@ -1,13 +1,9 @@
-// <nowiki>
+//TO-DO: jQuerization
+
 var language;
 
 //ASADRS
-var List0 = ["Alternative forms", "Synonyms", "Antonyms", "Derived terms", "Related terms", "See also"];
-//var List3 = List0.map (function(s){ return "==="+s+"==="});
-//var List4 = List3.map (function(s){ return "="+s+"="});
-//var List5 = List4.map (function(s){ return "="+s+"="});
-//var List = List3.concat(List4).concat(List5);
-//var regexp = "(" + List.join("|") + ")";
+var expandableHeaders = ["Alternative forms", "Synonyms", "Antonyms", "Derived terms", "Related terms", "See also"];
 var regexp = "==.+==";
 
 function determineLanguage(section)
@@ -18,36 +14,37 @@ function determineLanguage(section)
 			language = item.innerHTML;
 		}
 		cnt++;
-    });
+	});
 }
 function main()
 {
 	var cnt = 1;
 	$('.mw-headline').each (function(i, item){
-		if (List0.indexOf(item.innerHTML) >= 0){
-			item.nextSibling.firstChild.innerHTML += '<a href="javascript:expand ('+cnt+')">add</a>, ';
+		if (expandableHeaders.indexOf(item.innerHTML) >= 0){
+			item.nextSibling.firstChild.innerHTML += '<a href="javascript:expand (' + cnt + ', \'' + item.innerHTML + '\'); ">add</a>, ';
 		}
 		cnt++;
-    });
+	});
 }
-function expand(section)
+
+function expand(section, sectionName)
 {
 	var word = prompt("Enter a word");
 	var editor = Editor();
 	determineLanguage(section);
 	editor.addEdit({
-		
-            edit: function(wikitext){ return changeWikitext(wikitext, word, section)},
- 
-            // The function to call to change the HTML
-            redo: function(){ redo(word, section)},
- 
-            // The function to call to unchange the HTML (REQUIRED so that undo works)
-            undo: function(){ undo(word, section)},
- 
-            // The edit summary
-            summary: "Added to ASADRS"
-        });
+
+			edit: function(wikitext){ return changeWikitext(wikitext, word, section)},
+
+			// The function to call to change the HTML
+			redo: function(){ redo(word, section)},
+
+			// The function to call to unchange the HTML (REQUIRED so that undo works)
+			undo: function(){ undo(word, section)},
+
+			// The edit summary
+			summary: sectionName + " [[User:Dixtosa/expandASADRS.js|expanded]]; "
+		});
 }
 
 
@@ -73,11 +70,7 @@ function undo(word, section)
 	ul.removeChild(ul.children[0]);
 }
 
-
-
-// Make sure the utilities module is loaded (will only load if not already)
 mw.loader.using('mediawiki.util', function () {
- 
-    // Wait for the page to be parsed
-    $(document).ready(main);
+	if (mw.config.values.wgAction == "view")
+		$(document).ready(main);
 });

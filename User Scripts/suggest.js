@@ -1,140 +1,92 @@
-var api, map, resultRenderCache, searchboxesSelectors, $searchRegion = $('#simpleSearch, #searchInput').first(),
-	$searchInput = $('#searchInput');
+// Description         : Shows popup list of suggestions (templates and main namespace) when you type {{ and template name or type [[.
+// Problems/to-do      : not tested yet; no way to cancel. maybe we can move popuplist to the center of screen.
+// Dependency          : None
+// UserPrefs           : None
 
 
-function computeResultRenderCache(context) {
-	var $form, baseHref, linkParams;
-	$form = context.config.$region.closest('form');
-	baseHref = $form.attr('action');
-	baseHref += baseHref.indexOf('?') > -1 ? '&' : '?';
-	linkParams = {};
-	$.each($form.serializeArray(), function (idx, obj) {
-		linkParams[obj.name] = obj.value;
-	});
-	return {
-		textParam: context.data.$textbox.attr('name'),
-		linkParams: linkParams,
-		baseHref: baseHref
-	};
-}
+var wpTextbox1;
+var wikitext;
+var wikitextindex;
 
-function renderFunction(text, context) {
-	if (!resultRenderCache) {
-		resultRenderCache = computeResultRenderCache(context);
-	}
-	resultRenderCache.linkParams[resultRenderCache.textParam] = text;
-	this.text(text).wrap($('<a>').attr('href', resultRenderCache.baseHref + $.param(resultRenderCache.linkParams)).attr('title', text).addClass('mw-searchSuggest-link'));
-}
-
-function specialRenderFunction(query, context) {
-	var $el = this;
-	if (!resultRenderCache) {
-		resultRenderCache = computeResultRenderCache(context);
-	}
-	resultRenderCache.linkParams[resultRenderCache.textParam] = query;
-	if ($el.children().length === 0) {
-		$el.append($('<div>').addClass('special-label').text(mw.msg('searchsuggest-containing')), $('<div>').addClass('special-query').text(query)).show();
-	} else {
-		$el.find('.special-query').text(query);
-	}
-	if ($el.parent().hasClass('mw-searchSuggest-link')) {
-		$el.parent().attr('href', resultRenderCache.baseHref + $.param(
-			resultRenderCache.linkParams) + '&fulltext=1');
-	} else {
-		$el.wrap($('<a>').attr('href', resultRenderCache.baseHref + $.param(resultRenderCache.linkParams) + '&fulltext=1').addClass('mw-searchSuggest-link'));
-	}
-}
-
-
-function myresponse(text)
+function myselect(ui)
 {
-	var wpTextbox1 = $("#wpTextbox1");
-	var wikitext = wpTextbox1.val();
-	var index = document.getElementById("wpTextbox1").selectionStart;
-	wpTextbox1.val(wikitext.substring(0, index)+text+wikitext.substring(index));
+	console.log("ui.item" + JSON.stringify(ui.item));
+
+	var l = wikitextindex; for(; l >= 0 && wikitext[l] != "{" && wikitext[l] != "["; l--); l++;
+	text = ui.item.value;
+	if (wikitext[l - 1] == "{")
+		text = text.substring(9);
+
+	wpTextbox1.val(wikitext.substring(0, l) + text + wikitext.substring(wikitextindex));
+	wikitext = document.getElementById("wpTextbox1").value;
+	document.getElementById("wpTextbox1").setSelectionRange(l+text.length, l+text.length);
+}
+function isEditAreaActive()
+{
+	return $ ("#wpTextbox1").length && $ ("#wpTextbox1").is(":focus");
 }
 
+function cutTerm()
+{
+	wikitext = document.getElementById("wpTextbox1").value;
+	wikitextindex = document.getElementById("wpTextbox1").selectionStart;
 
-
-
-
-
-searchboxesSelectors = ['#searchInput', '#powerSearchText', '#searchText', '.mw-searchInput', '#wpTextbox1'];
-$(searchboxesSelectors.join(', ')).suggestions({
-	fetch:
-	function (query, response)
+	var NameSpace = "", query = "";
+	if (isEditAreaActive())
 	{
-		//alert(response);
-		var wpTextbox1 = $("#wpTextbox1");
-		if (wpTextbox1.length && wpTextbox1.is(":focus") === true)
+		var index = document.getElementById("wpTextbox1").selectionStart;
+		if (index >= 2)
 		{
-			var wikitext = wpTextbox1.val();
-			NameSpace = "";
-			var index = document.getElementById("wpTextbox1").selectionStart;
-			if (index >= 2)
-			{
-				var leftGood = false, rightGood = false;
-				var ind;
-				var myquery = "";
-				for(ind = index-1; ind>=0 && /[A-zა-ჰа-я\-]/.test(wikitext[ind]); ind--)
-					myquery = wikitext[ind] + myquery;
+			var ind;
+			var myquery = "";
+			for(ind = index-1; ind>=0 && /[a-zA-Zა-ჰа-яА-Я\:\-]/.test(wikitext[ind]); ind--)
+				myquery = wikitext[ind] + myquery;
+ 			
+			if (!(index == wikitext.length || /\s/.test(wikitext[index]) )) return "";
+ 			console.log("myquery: " + myquery);
 
-				if (ind >= 1 && wikitext.substr(ind - 1, 2) == "{{") leftGood = true;
-				ind=index;
-				if (ind == wikitext.length || /\s/.test(wikitext[ind]) ) rightGood=true;
-				if (myquery.length > 0 && leftGood && rightGood)
-				{
-					NameSpace = "Template:";
+ 			if (ind >= 1) {
+ 				opening = wikitext.substr(ind - 1, 2);
+ 				if (opening == "{{") {
+ 					NameSpace = "Template:";
 					query = myquery;
+ 				}
+ 				if (opening == "[[") {
+					query = myquery;
+ 				}
+ 			}
+		}
+	}
+	console.log("NameSpace + query: " + NameSpace + query);
+	return NameSpace + query;
+}
+mw.loader.using('jquery.ui.autocomplete', function () {
+	if (mw.config.values.wgAction != "edit") return ;
+	
+	wpTextbox1 = $("#wpTextbox1");
+	wikitext = wpTextbox1.val();
+	wikitextindex = document.getElementById("wpTextbox1").selectionStart;
+	
+	$('#wpTextbox1').autocomplete({
+		minLength: 2,
+		select: function( event, ui ) {
+			myselect(ui);
+			return false;
+		},
+		source: function (request, response) {
+			$.getJSON(
+				mw.util.wikiScript('api'), {
+					format: 'json',
+					action: 'opensearch',
+					search: cutTerm()
+				}, function (arr) {
+					if (arr && arr.length > 1) {
+						response(arr[1]);
+					} else {
+						response([]);
+					}
 				}
-				else return ;
-			}
+			);
 		}
-		var node = this[0];
-		api = api || new mw.Api();
-		$.data(node, 'request', api.get({
-			action: 'opensearch',
-			search: NameSpace + query,
-			namespace: 0,
-			suggest: ''
-		}).done(function (data) {
-			//if (myquery.length > 0 && leftGood && rightGood) alert ("data: " + data);
-			//alert ("data[1]: " + data[1]);
-			if (myquery.length > 0 && leftGood && rightGood) myresponse(data);
-		}));
-	},
-	cancel: function () {
-		var node = this[0],
-			request = $.data(node, 'request');
-		if (request) {
-			request.abort();
-			$.removeData(node, 'request');
-		}
-	},
-	result: {
-		render: renderFunction,
-		select: function () {
-			return true;
-		}
-	},
-	cache: true,
-	highlightInput: true
-}).bind('paste cut drop', function () {
-	$(this).trigger('keypress');
-}).each(function () {
-	var $this = $(this);
-	$this.data('suggestions-context').data.$container.css('fontSize', $this.css('fontSize'));
+	});
 });
-
-$searchInput.
-suggestions({
-	special: {
-		render: specialRenderFunction,
-		select: function ($input) {
-			$input.closest('form').append($('<input type="hidden" name="fulltext" value="1"/>'));
-			return true;
-		}
-	},
-	$region: $searchRegion
-});
-$searchInput.closest('form').find('.mw-fallbackSearchButton').remove();
