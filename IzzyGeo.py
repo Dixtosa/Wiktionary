@@ -22,7 +22,8 @@ ENTRY = """\
 
 ===%s===
 {{%s%s}}
-%s
+
+# %s
 %s"""
 
 Headers = ["Noun" ,"Adjective" ,"Verbal noun" ,"Adverb" ,"Interjection" ,"Verb" ,"Pronoun" ,"Proper noun" ,"Particle" ,"Phrase" ,"Postposition"]
@@ -34,6 +35,7 @@ Header2Template = {
 "Adverb" : "ka-adv",
 "Interjection" : "head|ka|interjection",
 "Verb" : "ka-verb",
+"Verb*" : "head|ka|verb form",
 "Pronoun" : "ka-pron",
 "Proper noun" : "ka-proper_noun",
 "Particle" : "head|ka|particle",
@@ -54,11 +56,11 @@ def LAT_2_GEO(text):
 			res+=i
 	return res.encode("utf-8")
 
-############# end of unnoficial transliteration ################
+############# end of unofficial transliteration ################
 
 
-def GetDeclension(STEM_TYPE, Plural, Stem, PoSi):        
-	DECLENSION="<!--\n\n====Declension====\n{{ka-smartdecl}}-->"
+def GetDeclension(STEM_TYPE, Plural, Stem, PoSi):
+	DECLENSION="\n\n====Inflection====\n{{ka-infl-noun}}"
 	return DECLENSION
 
 def GetPlural(Word):
@@ -129,7 +131,7 @@ def Generate_Content(
 	return ENTRY % (Header, Template, Plural, definition, DECLENSION)
 
 def Getlexeme():
-        return raw_input ("lexeme: ")
+	return raw_input ("lexeme: ")
 
 def GenerateEnglishTranslation():
 	Eng_trans = raw_input ("English infinitive: ")
@@ -149,19 +151,19 @@ def Generate_Verb_Definition():
         #        "Perfect", "Pluperfect", "Perfect subjunctive"]
 	text = "{{ka-verb-form-of|"+str(ans)+"|"+plurality_list[plurality-1]
 	ans_time = int(raw_input("""
-1) awmyo
-2) uwyveteli                       ras shvreboda?
-3) awmyos kavSirebiTi              ras shvrebodes?
-4) myofadi
-5) xolmeobiTi SedegobiTi           ras izamda?
-6) myofadis kavSirebiTi            ras izamdes?
+1) awmyo			ras shvreba?	[axlandeli]
+2) uwyveteli			ras shvreboda?
+3) awmyos kavSirebiTi		ras shvrebodes?
+4) myofadi			ras izams?	[momavali]
+5) xolmeobiTi SedegobiTi	ras izamda?
+6) myofadis kavSirebiTi		ras izamdes?
 ----------
-7) wyvetili.                       ra qna?
-8) wyvetilis kavSirebiTi           ra qnas?
+7) wyvetili.			ra qna?		[warsuli]
+8) wyvetilis kavSirebiTi	ra qnas?
 ----------
-9)  I TurmeobiTi                   ra uqnia?
-10) II TurmeobiTi                  ra eqna?
-11) III TurmeobiTi                 ra eqnas?
+9)  I TurmeobiTi		ra uqnia?
+10) II TurmeobiTi		ra eqna?
+11) III TurmeobiTi		ra eqnas?
 """))
                   
 	text+="|"+str(ans_time)+"|"+lexeme+"}}"
@@ -185,7 +187,7 @@ def getDefinition(partOfSpeech):
 	else:
 		# ugly but cool XD
 		ans = raw_input("In English (separate with , and ;):").replace(";", "]]\n# [[")
-		return "# [[" + ans.replace(",", "]], [[") + "]]"
+		return "[[" + ans.replace(",", "]], [[") + "]]"
 
 def Main():
 	plural = ""
@@ -199,13 +201,13 @@ def Main():
 	
 	if partOfSpeech in ["Noun", "Proper noun"]:
 		plural = "|" + GetPlural(word)
-		declension = GetDeclension(GetStemType (word), plural, GetStem (word), partOfSpeech)
+		declension = "" or GetDeclension(GetStemType (word), plural, GetStem (word), partOfSpeech)
 	
 	definition = getDefinition(partOfSpeech)
 	
 	
 	content = Generate_Content(
-	        partOfSpeech,
+	        partOfSpeech.replace("*", ""),
 	        headwordTemplate,
 	        LAT_2_GEO(plural),
 	        definition,
@@ -214,6 +216,6 @@ def Main():
 	
 	#print content
 	Copy_To_Clip(content)
-	open_browser(Word)
+	open_browser(word)
 
 Main()
