@@ -7,10 +7,12 @@ function escapeRegExp(str) {
 	return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
 }
 
+
 function doGeorgian(wikitext)
 {
 	//START of FUNCTIONS
 	function removeHead(wikitext) {
+		//TODO: noun forms
 		wikitext = wikitext.replace("head|ka|noun", "ka-noun");
 		wikitext = wikitext.replace("head|ka|adverb", "ka-adv");
 		wikitext = wikitext.replace("head|ka|adjective", "ka-adj");
@@ -30,11 +32,44 @@ function doGeorgian(wikitext)
 		if (first_h3.attr("class") == "Alternative forms") first_h3 = first_h3.next();
 		if (first_h3.attr("class") == "Etymology") first_h3 = first_h3.next();
 		
-		first_h3.before("<section class = 'Pronunciation' level = '3'><data>\n* {{ka-IPA}}\n* {{ka-hyphen}}\n\n</data></section>");
+		var hyphen = "\n* {{ka-hyphen}}";
+		if ((mw.config.values.wgTitle.match(/[აეიოუ]/g) || "").length <= 1) hyphen = "";
+		
+		first_h3.before("<section class = 'Pronunciation' level = '3'><data>\n* {{ka-IPA}}" + hyphen + "\n\n</data></section>");
 		return deXMLize(wikixml);
+	}
+	function fixDeclension(wikitext)
+	{
+	
+		//remove erroneously added declension tables
+		wikitext = wikitext.replace (/====[ ]?Declension[ ]?====\n{{ka-decl-adj-auto}}\n/, "");
+		wikitext = wikitext.replace (/====[ ]?Declension[ ]?====\n{{ka-adj-decl.*?}}\n/, "");
+
+		wikitext = wikitext.replace(/{{ka-noun-c\|.*plural.*}}/, "{{ka-infl-noun|-}}");
+		wikitext = wikitext.replace(/{{ka-noun-c\|.*}}/, "{{ka-infl-noun}}");
+		
+		
+		wikitext = wikitext.replace(/{{ka-noun-a\|.*plural.*}}/, "{{ka-infl-noun|-}}")
+		wikitext = wikitext.replace(/{{ka-noun-a\|.*}}/, "{{ka-infl-noun}}")
+		
+		wikitext = wikitext.replace(/{{ka-noun-o\|.*plural.*}}/, "{{ka-infl-noun|-}}")
+		wikitext = wikitext.replace(/{{ka-noun-o\|.*}}/, "{{ka-infl-noun}}")
+		
+		wikitext = wikitext.replace(/{{ka-noun-u\|.*plural.*}}/, "{{ka-infl-noun|-}}")
+		wikitext = wikitext.replace(/{{ka-noun-u\|.*}}/, "{{ka-infl-noun}}")
+		
+		wikitext = wikitext.replace(/{{ka-noun-e\|.*plural.*}}/, "{{ka-infl-noun|-}}")
+		wikitext = wikitext.replace(/{{ka-noun-e\|.*}}/, "{{ka-infl-noun}}")
+	
+		wikitext = wikitext.replace(/{{ka\-noun\-c\-2\|.*?\|.*?\|(.*?)\|.*plural.*}}/, "{{ka-infl-noun|$1|-}}")
+		wikitext = wikitext.replace(/{{ka\-noun\-c\-2\|.*?\|.*?\|(.*?)\|.*}}/, "{{ka-infl-noun|$1}}");
+		
+		return wikitext;
 	}
 	//END of FUNCTIONS
 	
+	wikitext = fixDeclension(wikitext);
+	wikitext = wikitext.replace("Declension", "Inflection");
 	
 	var regexReplace = {
 		"{{IPA\\|.+?\\|lang=ka}}"  :  "{{ka-IPA}}"
@@ -62,10 +97,6 @@ function doGeorgian(wikitext)
 	}
 	
 	wikitext = addPronunciation(wikitext);
-	
-	//remove erroneously added declension tables
-	wikitext = wikitext.replace (/====[ ]?Declension[ ]?====\n{{ka-decl-adj-auto}}\n/, "");
-	wikitext = wikitext.replace (/====[ ]?Declension[ ]?====\n{{ka-adj-decl.*?}}\n/, "");
 	
 	return wikitext;
 	//document.editform.submit();
