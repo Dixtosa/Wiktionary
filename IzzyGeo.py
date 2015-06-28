@@ -2,10 +2,10 @@
 # --coding: utf-8
 
 
-# Description:   This script eases creation of Georgian terms on http://en.wiktionary.org
-# Author:        Dixtosa
-# Language:      Python 2
-# Date created:  18 Feb 2012 (initial version)
+# Description:		This script eases creation of Georgian terms on http://en.wiktionary.org
+# Author:		Dixtosa
+# Language:		Python 2
+# Date created:		18 Feb 2012 (initial version)
 
 import re, sys
 
