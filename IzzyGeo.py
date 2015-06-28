@@ -8,10 +8,22 @@
 # Date created:		18 Feb 2012 (initial version)
 
 import re, sys
+import win32clipboard
+
 
 letters="abgdevzTiklmnopJrstufqRySCcZwWxjh"
 vowel = "aeiou"
 consonants = "".join (set(letters) - set(vowel))
+
+
+############# unofficial transliteration ################
+def LAT_2_GEO(text):
+	res=unicode("")
+	for i in text:
+		if i in letters: res+=unichr(4304+letters.index(i))
+		else: res+=i
+	return res.encode("utf-8")
+	
 
 ENTRY = """\
 ==Georgian==
@@ -46,30 +58,23 @@ Header2Template = {
 # noun and verb forms
 Forms = ["Noun", "Verb"]
 
-############# unnoficial transliteration ################
-def LAT_2_GEO(text):
-	res=unicode("")
-	for i in text:
-		if i in letters:
-			res+=unichr(4304+letters.index(i))
-		else:
-			res+=i
-	return res.encode("utf-8")
 
-############# end of unofficial transliteration ################
-
-
-def GetDeclension(STEM_TYPE, Plural, Stem, PoSi):
-	DECLENSION="\n\n====Inflection====\n{{ka-infl-noun}}"
-	return DECLENSION
+def GetDeclension(term):
+	plural = GetPlural(term)
+	arg1, arg2 = "", ""
+	if plural == "-":
+		arg1 = "|-"
+	elif plural != "":
+		arg1 = plural[:-3]
+	return "\n====Inflection====\n{{ka-infl-noun%s%s}}" % (LAT_2_GEO(arg1), LAT_2_GEO(arg2))
 
 def GetPlural(Word):
 	ans = raw_input("""
 Does it have plural? 
 	+ YES, is it different from: """+Word[:-1]+ """ebi?
-		- NO  >> press enter
-		- YES >> type
-	+ NO >> type 'no':\n""")
+		- NO  : press enter
+		- YES : type the exceptional plural
+	- NO : type 'no'\n""")
 	
 	if ans=="ara" or ans=="no": return "-";
 	elif ans!="": return ans
@@ -77,16 +82,6 @@ Does it have plural?
 	if Word[-1] in "ia": return Word[:-1]+"ebi"
 	if Word[-1] in "eou": return Word+"ebi"
 	
-	return Plural
-
-def GetStem (Word):
-	if Word[-1] in "iae": return Word[:-1]
-	elif Word[-1] in "ou": return Word
-
-def GetStemType (Word):
-	if (Word[:-1][-1] in consonants) and (Word[-1]=="i"): return "TanxmovanfuZiani"
-	if Word[-1]=="o" or Word[-1]=="u": return "oufuZiani"
-	return Word[-1] + "fuZiani"
 
 # I admit this function is overcomplicated w/o any reason xD
 def getPartOfSpeech():
@@ -114,21 +109,13 @@ def open_browser(Word):
 
 
 def Copy_To_Clip(content):
-	import win32clipboard
 	win32clipboard.OpenClipboard(0)
 	win32clipboard.EmptyClipboard()
 	win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, content.decode("utf-8"))
 	win32clipboard.CloseClipboard
 
 	
-def Generate_Content(
-        Header,
-        Template,
-        Plural,
-        definition,
-        DECLENSION
-        ):
-	return ENTRY % (Header, Template, Plural, definition, DECLENSION)
+
 
 def Getlexeme():
 	return raw_input ("lexeme: ")
@@ -189,33 +176,77 @@ def getDefinition(partOfSpeech):
 		ans = raw_input("In English (separate with , and ;):").replace(";", "]]\n# [[")
 		return "[[" + ans.replace(",", "]], [[") + "]]"
 
+class GenericWord(object):
+	def __init__(self, term):
+		self.term = term
+		self.partOfSpeech = None
+		self.definitionLine = None
+	def run(self):
+		pass
+	def generateContent(self):
+		if self.plural != "":
+			self.plural = "|" + self.plural
+		
+		return self.entryTemplate % (self.partOfSpeech, self.headwordTemplate, self.plural, self.definitionLine, self.declension)
+
+class Noun:
+	pass
+class Adjective:
+	pass
+class VerbalNoun:
+	pass
+class Verb:
+	pass
+class Pronoun:
+	pass
+class Wordform:
+	pass
+
+header2class = {
+"Noun"		:	Noun,
+"Adjective"	:	Adjective,
+"Verbal	noun"	:	VerbalNoun,
+"Adverb"	:	GenericWord,
+"Interjection"	:	GenericWord,
+"Verb"		:	Verb,
+"Pronoun"	:	Pronoun,
+"Proper	noun"	:	Noun,
+"Particle"	:	GenericWord,
+"Phrase"	:	GenericWord,
+"Postposition"	:	GenericWord,
+
+"Noun*"		:	Wordform,
+"Verb*"		:	Wordform
+}
+
 def Main():
-	plural = ""
-	declension = ""
-	definition = ""
+	posClass = header2class[getPartOfSpeech()]
 	
-	partOfSpeech = getPartOfSpeech()
-	headwordTemplate = getHeadwordTemplate(partOfSpeech)
+	term = raw_input("Input the term: ") #Input in the Latin script, but use unofficial romanization; see http://en.wikipedia.org/wiki/Romanization_of_Georgian
+
+	entry = posClass()
+	entry.run()
+	content = entry.generateContent()
 	
-	word = raw_input("Input word: ") #Input in Latin script, but use unnoficial romanization; see http://en.wikipedia.org/wiki/Romanization_of_Georgian
-	
-	if partOfSpeech in ["Noun", "Proper noun"]:
-		plural = "|" + GetPlural(word)
-		declension = "" or GetDeclension(GetStemType (word), plural, GetStem (word), partOfSpeech)
-	
-	definition = getDefinition(partOfSpeech)
-	
-	
-	content = Generate_Content(
-	        partOfSpeech.replace("*", ""),
-	        headwordTemplate,
-	        LAT_2_GEO(plural),
-	        definition,
-	        declension
-	)
-	
-	#print content
 	Copy_To_Clip(content)
-	open_browser(word)
+	open_browser(term)
 
 Main()
+	
+headwordTemplate = getHeadwordTemplate(partOfSpeech)
+
+if partOfSpeech in ["Noun", "Proper noun"]:
+	plural = GetPlural(word)
+	declension = "" or GetDeclension(word)
+
+definition = getDefinition(partOfSpeech)
+
+
+content = Generate_Content(
+        partOfSpeech.replace("*", ""),
+        headwordTemplate,
+        LAT_2_GEO(plural),
+        definition,
+        declension
+)
+	
