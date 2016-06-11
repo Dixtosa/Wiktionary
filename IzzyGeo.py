@@ -1,14 +1,14 @@
 #!/usr/bin/python
 # --coding: utf-8
 
-
 # Description:		This script eases creation of Georgian terms on http://en.wiktionary.org
-# Author:		Dixtosa
-# Language:		Python 3
+# Author:			Dixtosa
+# Language:			Python 3
 # Date created:		18 Feb 2012 (initial version)
+# Last updated:		06 Jun 2016
 
 import re, sys
-
+#from enum import Enum
 
 letters="abgdevzTiklmnopJrstufqRySCcZwWxjh"
 vowel = "aeiou"
@@ -31,20 +31,11 @@ ENTRY = """==Georgian==
 * {{ka-hyphen}}
 
 ===%s===
-{{%s%s}}
+{{%s}}
 
-# %s
+%s
 %s"""
 
-def Generate_Content(
-        Header,
-        Template,
-        plural,
-        definition,
-        DECLENSION
-        ):
-	plural = "|" + plural if plural != "" else ""
-	return ENTRY % (Header, Template, plural, definition, DECLENSION)
 
 Headers = ["Noun" ,"Adjective" ,"Verbal noun" ,"Adverb" ,"Interjection" ,"Verb" ,"Pronoun" ,"Proper noun" ,"Particle" ,"Phrase" ,"Postposition"]
 
@@ -66,7 +57,8 @@ Header2Template = {
 # noun and verb forms
 Forms = ["Noun", "Verb"]
 
-
+def GetConjugation(entry):
+	return "\n\n====Conjugation====\n{{ka-conj-transitive-ablaut\n|stem =\n|ablaut =\n|preverb =\n|versioner=\n|SNM=\n}}"
 def GetDeclension(entry):
 	arg1, arg2 = "", ""
 	if not entry.hasPlural():
@@ -118,27 +110,146 @@ def Copy_To_Clipboard(content):
 	subp.communicate(input = bytearray(content, "UTF-16")[2:]); #rm BOM?
 
 
-def Getlexeme():
-	return input ("lexeme: ")
+def getHeadwordTemplate(partOfSpeech):
+	last = partOfSpeech[-1]
+	if last == "*" and partOfSpeech in Forms:
+		return "ka|head|%s form" % (partOfSpeech.lower())
+	else:
+		return Header2Template[partOfSpeech]
 
-def GenerateEnglishTranslation():
-	Eng_trans = input ("English infinitive: ")
-	conj = "\n\n====Conjugation====\n{{ka-conj-transitive-ablaut\n|stem =\n|ablaut =\n|preverb =\n|versioner=\n|SNM=\n}}"
-	return "She/he/it [[" + Eng_trans+"]]s, is [["+Eng_trans+"]]ing" + conj
+def getDefinition(partOfSpeech):
+	translations = [line.split(",") for line in input("In English (separate with , and ;):").split(";")]
+	#if partOfSpeech == "Verbal noun":
+	#	return "{{ka-verbal for|" + LAT_2_GEO(input ("Lemma: ")) + "}}"
+	
+	res = ""
+	for line in translations:
+		to = "to " if partOfSpeech == "Verb" else ""
+		res += "# " + ", ".join(map(lambda t: to + "[[" + t + "]]", line)) + "\n"
+			
+	return res
 
+class GenericLemma(object):
+	def __init__(self, term):
+		self.term = term
+		self.definition = None
+		self.inflection = ""
+	def run(self):
+		self.definition = getDefinition(self.getPartOfSpeech())
+	def generateContent(self, templateParameter):
+		sectionTitle = self.getPartOfSpeech()
+		headwordLine = getHeadwordTemplate(sectionTitle)
+		headwordLine += "|" + templateParameter if templateParameter != "" else ""
+		return ENTRY % (sectionTitle, headwordLine, self.definition, self.inflection)
+	def getPartOfSpeech(self):
+		pass
 
+class GenericNoun(GenericLemma):
+	def __init__(self, term):
+		super().__init__(term)
+	def hasPlural(self):
+		return self.plural != "-"
+	def getPlural(self):
+		ans = AskPlural(self.term)
+		return self.guessPlural() if ans == "" else ans
+	def guessPlural(self):
+		if self.term[-1] in "ia":
+			return self.term[:-1] + "ebi"
+		if self.term[-1] in "eou":
+			return self.term + "ebi"
+	def hasPredictablePlural(self):
+		return self.guessPlural() == self.plural
+	def setPlural(self):
+		pass
+	def setDeclension(self):
+		pass
+	def generateContent(self):
+		return super().generateContent(LAT_2_GEO(self.plural))
+	def run(self):
+		super().run()
+		self.setPlural();
+		self.setDeclension();
+		
 
-def Generate_Verb_Definition():
-	lexeme=LAT_2_GEO(Getlexeme())
-	ans = int(input("1) 1\n2) 2\n3) 3\n"))
-	plurality=int(input("1) Singular\n2) Plural:\n"))
-	#persons = ["First", "Second", "Third"]
-	plurality_list = ["sg", "pl"]
-	#time = ["Present indicative", "Imperfect", "Present subjunctive", "Future indicative", "Conditional", "Future subjunctive",
-        #        "Aorist indicative", "Optative",
-        #        "Perfect", "Pluperfect", "Perfect subjunctive"]
-	text = "{{ka-verb-form-of|"+str(ans)+"|"+plurality_list[plurality-1]
-	ans_time = int(input("""
+class Noun(GenericNoun):
+	def __init__(self, term):
+		super().__init__(term)
+	def setPlural(self):
+		self.plural = self.getPlural()
+	def setDeclension(self):
+		self.declension = "" or GetDeclension(self)
+	def getPartOfSpeech(self):
+		return "Noun"
+
+class ProperNoun(GenericNoun):
+	def __init__(self, term):
+		super().__init__(term)
+	def setPlural(self):
+		self.plural = "-"
+	def setDeclension(self):
+		self.declension = "" or GetDeclension(self)
+	def getPartOfSpeech(self):
+		return "Proper noun"
+
+class Adjective(GenericLemma):
+	def __init__(self, term):
+		super().__init__(term)
+	def run(self):
+		super().run()
+		self.diminutive = input("diminutive: ")
+	def getPartOfSpeech(self):
+		return "Adjective"
+	def generateContent(self):
+		return super().generateContent(self.diminutive)
+
+class VerbalNoun(GenericLemma):
+	def getPartOfSpeech(self):
+		return "Verbal noun"
+
+class Verb(GenericLemma):
+	def __init__(self, term):
+		super().__init__(term)
+	def run(self):
+		super().run()
+		self.verbTense = ["present", "future"][int(input("present (1) or future(2)?: ")) - 1]
+	def generateContent(self):
+		return super().generateContent(self.verbTense)
+	def getPartOfSpeech(self):
+		return "Verb"
+
+class Pronoun(GenericLemma):
+	def __init__(self, term):
+		super().__init__(term)
+		
+class GenericWordForm:
+	def __init__(self, term, partOfSpeech):
+		self.term = term
+		self.definitionLine = None
+	def run(self):
+		self.lemma = input("Georgian lemma: ")
+		self.definitionLine = self.generateDefinitionLine()
+	def generateDefinitionLine(self):
+		pass
+	def generateContent(self):
+		sectionTitle = self.getPartOfSpeech()
+		headwordLine = getHeadwordTemplate(sectionTitle)
+		return ENTRY % (sectionTitle, headwordLine, self.definitionLine, "")
+	def getPartOfSpeech(self):
+		pass
+
+class VerbForm(GenericWordForm):
+	def __init__(self, term):
+		super().__init__(term, "Verb")
+	def generateDefinitionLine(self):
+		ans = int(input("1) 1\n2) 2\n3) 3\n"))
+		plurality=int(input("1) Singular\n2) Plural:\n"))
+		#persons = ["First", "Second", "Third"]
+		plurality_list = ["sg", "pl"]
+		#time = ["Present indicative", "Imperfect", "Present subjunctive", "Future indicative", "Conditional", "Future subjunctive",
+			#        "Aorist indicative", "Optative",
+			#        "Perfect", "Pluperfect", "Perfect subjunctive"]
+		text = "# {{ka-verb-form-of|"+str(ans)+"|"+plurality_list[plurality-1]
+		ans_time = int(input("""
 1) awmyo			ras shvreba?	[axlandeli]
 2) uwyveteli			ras shvreboda?
 3) awmyos kavSirebiTi		ras shvrebodes?
@@ -154,101 +265,37 @@ def Generate_Verb_Definition():
 11) III TurmeobiTi		ra eqnas?
 """))
                   
-	text+="|"+str(ans_time)+"|"+lexeme+"}}"
+		text += "|" + str(ans_time) + "|" + LAT_2_GEO(self.lemma) + "}}"
 	
-	return text
+		return text
+	def getPartOfSpeech(self):
+		return "Verb"
+		
 
-def getHeadwordTemplate(partOfSpeech):
-	last = partOfSpeech[-1]
-	if last == "*" and partOfSpeech in Forms:
-		return "ka|head|%s form" % (partOfSpeech.lower())
-	else:
-		return Header2Template[partOfSpeech]
-
-def getDefinition(partOfSpeech):
-	if partOfSpeech == "Verb*": #verb form
-		return Generate_Verb_Definition()
-	elif partOfSpeech == "Verb":
-		return GenerateEnglishTranslation()
-	elif partOfSpeech == "Verbal noun":
-		return "{{ka-verbal for|" + LAT_2_GEO(input ("Lemma: ")) + "}}"
-	else:
-		# ugly but cool XD
-		ans = input("In English (separate with , and ;):").replace(";", "]]\n# [[")
-		return "[[" + ans.replace(",", "]], [[") + "]]"
-
-class GenericWord(object):
+class NounForm(GenericWordForm):
 	def __init__(self, term):
-		self.term = term
-		self.partOfSpeech = None
-		self.definitionLine = None
-	def run(self):
-		pass
-	def generateContent(self):
-		if self.plural != "":
-			self.plural = "|" + self.plural
+		super().__init__(term, "Noun")
+	def generateDefinitionLine(self):
+		definitionLine = "{{nominative of|lang=ka|%s}}" % (LAT_2_GEO(self.lemma))
+		return super().generateContent(definitionLine)
+	def getPartOfSpeech(self):
+		return "Noun"
 		
-		return self.entryTemplate % (self.partOfSpeech, self.headwordTemplate, self.plural, self.definitionLine, self.declension)
-
-class Noun:
-	def __init__(self, term):
-		self.term = term
-	def setPartOfSpeech(self, partOfSpeech):
-		self.partOfSpeech = partOfSpeech
-	def run(self):
-		self.definition = getDefinition(self.partOfSpeech)
-		self.headwordTemplate = getHeadwordTemplate(self.partOfSpeech)
-		
-		if self.partOfSpeech in ["Noun", "Proper noun"]:
-			self.plural = self.getPlural()
-			self.declension = "" or GetDeclension(self)
-	def generateContent(self):
-		return Generate_Content(
-			self.partOfSpeech.replace("*", ""),
-			self.headwordTemplate,
-			LAT_2_GEO(self.plural),
-			self.definition,
-			self.declension
-		)
-	def hasPlural(self):
-		return self.plural != "-"
-	def getPlural(self):
-		ans = AskPlural(self.term)
-		return self.guessPlural() if ans == "" else ans
-	def guessPlural(self):
-		if self.term[-1] in "ia":
-			return self.term[:-1] + "ebi"
-		if self.term[-1] in "eou":
-			return self.term + "ebi"
-	def hasPredictablePlural(self):
-		return self.guessPlural() == self.plural
-		
-class Adjective:
-	pass
-class VerbalNoun:
-	pass
-class Verb:
-	pass
-class Pronoun:
-	pass
-class Wordform:
-	pass
-
 header2class = {
-"Noun"		:	Noun,
-"Adjective"	:	Adjective,
-"Verbal	noun"	:	VerbalNoun,
-"Adverb"	:	GenericWord,
-"Interjection"	:	GenericWord,
-"Verb"		:	Verb,
-"Pronoun"	:	Pronoun,
-"Proper	noun"	:	Noun,
-"Particle"	:	GenericWord,
-"Phrase"	:	GenericWord,
-"Postposition"	:	GenericWord,
+"Noun"			:	Noun,
+"Adjective"		:	Adjective,
+"Verbal noun"	:	VerbalNoun,
+"Adverb"		:	GenericLemma,
+"Interjection"	:	GenericLemma,
+"Verb"			:	Verb,
+"Pronoun"		:	Pronoun,
+"Proper noun"	:	ProperNoun,
+"Particle"		:	GenericLemma,
+"Phrase"		:	GenericLemma,
+"Postposition"	:	GenericLemma,
 
-"Noun*"		:	Wordform,
-"Verb*"		:	Wordform
+"Noun*"			:	NounForm,
+"Verb*"			:	VerbForm
 }
 
 def Main():
@@ -258,7 +305,6 @@ def Main():
 	term = input("Input the term: ") #Input in the Latin script, but use unofficial romanization; see http://en.wikipedia.org/wiki/Romanization_of_Georgian
 
 	entry = posClass(term)
-	entry.setPartOfSpeech(partOfSpeech)
 	entry.run()
 	content = entry.generateContent()
 	#print (content)
