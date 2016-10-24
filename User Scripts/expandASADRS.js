@@ -1,76 +1,77 @@
-//TO-DO: jQuerization
+// Description         : with a new button "add" one can expand specific headers without reloading the section (or even, page)
+// TO-DO               : take templated lists in account; add sorting; ruse correct script in redo; and simply make it work :D
+// Dependency          : None
+// <nowiki>
 
-var language;
+ASADRS = {};
+ASADRS.expandableHeaders = ["Alternative forms", "Synonyms", "Antonyms", "Derived terms", "Related terms", "See also"]; //ASADRS; got it?
 
-//ASADRS
-var expandableHeaders = ["Alternative forms", "Synonyms", "Antonyms", "Derived terms", "Related terms", "See also"];
-var regexp = "==.+==";
-
-function determineLanguage(section)
+ASADRS.main = function()
 {
-	var cnt = 1;
-	$('.mw-headline').each (function(i, item){
-		if (cnt <= section && item.parentElement.tagName == "H2"){
-			language = item.innerHTML;
+	let section = 1;
+	let lastLang = "";
+	let leftBrackets = $(".mw-editsection > .mw-editsection-bracket:contains('[')");
+	leftBrackets.each ((i, item) => {
+        item=$(item);
+        let headerText = item.parent().prev().text();
+        if (item.parent().parent().prop("tagName") == "H2")
+        {
+        	lastLang = headerText;
+        }
+		if (ASADRS.expandableHeaders.indexOf(headerText) >= 0){
+			item.after(`<a href="javascript:ASADRS.expand(${section}, '${headerText}', '${lastLang}'); ">add</a>, `);
 		}
-		cnt++;
+		section++;
 	});
-}
-function main()
+};
+
+
+ASADRS.expand = function(section, sectionName, language)
 {
-	var cnt = 1;
-	$('.mw-headline').each (function(i, item){
-		if (expandableHeaders.indexOf(item.innerHTML) >= 0){
-			item.nextSibling.firstChild.innerHTML += '<a href="javascript:expand (' + cnt + ', \'' + item.innerHTML + '\'); ">add</a>, ';
-		}
-		cnt++;
-	});
-}
+	let word = prompt("Enter a word");
+    if (word === null) return ;
+	let params = {
+		// returns function
+		edit: ASADRS.changeWikitext(word, language, section),
+		// The function to call to change the HTML
+		redo: ASADRS.redo(word, language, section),
+		// The function to call to unchange the HTML (REQUIRED so that undo works)
+		undo: ASADRS.undo(word, section),
+		summary: `${sectionName} [[User:Dixtosa/expandASADRS.js|expanded]]`
+	};
+	new Editor().addEdit(params);
+};
 
-function expand(section, sectionName)
+ASADRS.changeWikitext = function(word, language, section)
 {
-	var word = prompt("Enter a word");
-	var editor = Editor();
-	determineLanguage(section);
-	editor.addEdit({
-
-			edit: function(wikitext){ return changeWikitext(wikitext, word, section)},
-
-			// The function to call to change the HTML
-			redo: function(){ redo(word, section)},
-
-			// The function to call to unchange the HTML (REQUIRED so that undo works)
-			undo: function(){ undo(word, section)},
-
-			// The edit summary
-			summary: sectionName + " [[User:Dixtosa/expandASADRS.js|expanded]]; "
+	return (wikitext) => {
+		let n = 0;
+		let langHeaderRegexp = new RegExp("==.+==", "g");
+		let langcode = `{{subst:#invoke:languages/templates|getByCanonicalName|${language}}}`;
+		return wikitext.replace(langHeaderRegexp, function(match, pos, original){
+			n++;
+			return match + ((n === section) ? `\n* {{l|${langcode}|${word}}}`:"");
 		});
-}
+	};
+};
 
+ASADRS.redo = function(word, language, section)
+{
+	return () => {
+		let newhtml = `<li><span class="Geor" lang="ka" xml:lang="ka"><a href="/wiki/${word}#${language}" title="${word}">${word}</a></span></li>`;
+		let ul = $('.mw-headline').eq(section - 1).parent().next();
+		ul.prepend(newhtml);
+	};
+};
 
-function changeWikitext(wikitext, word, section)
+ASADRS.undo = function(word, section)
 {
-	var n = 0;
-	var langcode = "{{" + "subst:#invoke:languages/templates|getByCanonicalName|" + language + "}}";
-	wikitext = wikitext.replace(new RegExp(regexp, "g"), function(match, pos, original){
-		n++;
-		return match + ((n === section) ? "\n* {{l|"+langcode+"|"+word+"}}":"");
-	});
-	return wikitext;
-}
-function redo(word, section)
-{
-	var newhtml = '<li><span class="Geor" lang="ka" xml:lang="ka"><a href="/wiki/'+word+'#'+language+'" title="'+word+'">'+word+'</a></span></li>';
-	var ul = $('.mw-headline')[section - 1].parentElement.nextSibling.nextSibling;
-	ul.innerHTML = newhtml + ul.innerHTML;
-}
-function undo(word, section)
-{
-	var ul = $('.mw-headline')[section - 1].parentElement.nextSibling.nextSibling;
-	ul.removeChild(ul.children[0]);
-}
+	return () => {
+		let ul = $('.mw-headline').eq(section - 1).parent().next();
+		ul.children().first().remove();
+	};
+};
 
-mw.loader.using('mediawiki.util', function () {
-	if (mw.config.values.wgAction == "view")
-		$(document).ready(main);
-});
+if (mw.config.values.wgAction == "view")
+	$(document).ready(ASADRS.main);
+//</nowiki>
