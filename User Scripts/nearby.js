@@ -1,4 +1,4 @@
-// almost complete rewrite of hippietrail's obsolete [[User:Hippietrail/nearbypages.js]].
+// complete rewrite of hippietrail's obsolete [[User:Hippietrail/nearbypages.js]].
 // Uses MW API. and needs two queries per language
 // TODO: query only when visible
 
@@ -17,7 +17,7 @@ function WiktNearby() {
 		else
 			pairs = this.getLanguageElementPairsForTabbed();
 
-		$.each(pairs, function(index, pair){
+		pairs.forEach(function(pair){
 			var lang = pair.lang;
 			var $elem = pair.elem;
 			that.queryAndDisplay(lang, $elem);
@@ -70,7 +70,7 @@ function WiktNearby() {
 
 		new mw.Api().get(params).done(function(response) {
 			response.query.categorymembers.shift();
-			var nextStuff = response.query.categorymembers.map(item => $("<a></a>").attr("href", "http://en.wiktionary.org/wiki/" + item.title).text(item.title)[0].outerHTML).join(" • ");
+			var nextStuff = response.query.categorymembers.map(item => $("<a></a>").attr("href", "/wiki/" + item.title).text(item.title)[0].outerHTML).join(" • ");
 
 			params.cmdir = "desc";
 			new mw.Api().get(params).done(function(response) {
@@ -80,7 +80,7 @@ function WiktNearby() {
 				else
 					response.query.categorymembers.shift();
 
-				var prevStuff = response.query.categorymembers.map(item => $("<a></a>").attr("href", "http://en.wiktionary.org/wiki/" + item.title).text(item.title)[0].outerHTML).join(" • ");
+				var prevStuff = response.query.categorymembers.map(item => $("<a></a>").attr("href", "/wiki/" + item.title).text(item.title)[0].outerHTML).join(" • ");
 				var cur = "<strong class='selflink'>" + mw.config.values.wgTitle + "</strong>";
 
 				$elem.html("»&nbsp;" + prevStuff + " • " + cur + " • " + nextStuff);
@@ -89,11 +89,7 @@ function WiktNearby() {
 	};
 }
 
-// we need a globally visible JSONP callback
-var wiktNearby;
-
 if (mw.config.values.wgNamespaceNumber === 0)
-	$(function() {
-		wiktNearby = new WiktNearby();
-		wiktNearby.execute();
+	$(() => {
+		new WiktNearby().execute();
 	});
