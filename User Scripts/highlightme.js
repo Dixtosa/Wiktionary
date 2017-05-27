@@ -1,15 +1,14 @@
-// Description         : this is a very little script and does a very little thing, but does it well.
-// Real description xD : highlights your username in history (shows your contribution)
+// Real description    : highlights your username in history and adds "show bots" checkbox
 // Problems/to-do      : maybe a button somewhere "show my contrib" instead of highlighting
-// Dependency          : None
-// UserPrefs           : None
-
-
+// Dependency          : ES6
 
 if (mw.config.values.wgAction == "history")
 {
 	$( () => {
 		var username = mw.config.values.wgUserName;
 		$(".mw-userlink").filter((i, elem) => elem.text == username).css({"color" : "black", "font-weight" : "bold"});
+		$("#mw-history-compare .historysubmit").first().after("show bots").after($("<input id='show-bots' type='checkbox' checked/>").change(() => {
+			$(".mw-userlink").filter((i, elem) => elem.text.toUpperCase().endsWith("BOT")).parentsUntil("#pagehistory").toggle(); // see talk page;
+		}));
 	});
 }
