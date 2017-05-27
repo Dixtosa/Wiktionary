@@ -1,6 +1,7 @@
-// Description         : with a new button "add" one can expand specific headers without reloading the section (or even, page)
-// TO-DO               : take templated lists in account; add sorting; ruse correct script in redo; and simply make it work :D
-// Dependency          : None
+// Description       : With a new button "add" one can expand specific headers without reloading the section (or even, page)
+// TO-DO             : Take templated lists into account
+// TO-DO             : Add sorting
+// Dependency        : ES6
 // <nowiki>
 
 ASADRS = {};
@@ -58,9 +59,16 @@ ASADRS.changeWikitext = function(word, language, section)
 ASADRS.redo = function(word, language, section)
 {
 	return () => {
-		let newhtml = `<li><span class="Geor" lang="ka" xml:lang="ka"><a href="/wiki/${word}#${language}" title="${word}">${word}</a></span></li>`;
+		let langcode = `{{#invoke:languages/templates|getByCanonicalName|${language}}}`;
+		let newhtml = $(`<li><span><a href="/wiki/${word}#${language}" title="${word}">${word}</a></span></li>`);
 		let ul = $('.mw-headline').eq(section - 1).parent().next();
 		ul.prepend(newhtml);
+		
+		mw.loader.using("mediawiki.api.parse", () => {
+			new mw.Api().parse(`{{l|${langcode}|${word}}}`).done(function(html){
+				newhtml.html(html);
+			});
+		});
 	};
 };
 
